@@ -22,21 +22,27 @@ struct MyRecord {
     }
 };
 
-struct SomeData {
-    int32_t id;
-    std::shared_ptr<std::unordered_map<uint32_t, MyRecord>> data;
+struct Count {
+    long freq;
+    float log_prob;
 
     template<class Archive>
-    void save(Archive &ar) const {
-        ar(data);
-    }
-
-    template<class Archive>
-    void load(Archive &ar) {
-        static int32_t idGen = 0;
-        id = idGen++;
-        ar(data);
+    void serialize(Archive &ar) {
+        ar(freq, log_prob);
     }
 };
+
+typedef std::shared_ptr<Count> shared_count_ptr;
+typedef std::unordered_map<char, shared_count_ptr> ChrCntMap;
+typedef std::shared_ptr<ChrCntMap> shared_chr_cnt_map_ptr;
+typedef std::unordered_map<std::string, shared_chr_cnt_map_ptr> NGramMap;
+typedef std::shared_ptr<NGramMap> shared_n_gram_map_ptr;
+shared_n_gram_map_ptr markov_grammar;
+
+template<typename T>
+void save_grammar(T t, const char *grammar_file);
+
+template<typename T>
+T load_grammar(const char *grammar_file);
 
 #endif //MARKOV_MARKOV_TRAIN_H
