@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     parser.add<std::string>(training_set, '\0', "the path of training set", true, "");
     parser.add<int>(n_gram, '\0', "the order of markov process", true, 4);
     parser.add<std::string>(trained_model, '\0', "the path to put trained model", true, "");
-    parser.add<int>(from_len, '\0', "use passwords with length longer than from-len", false, 255);
+    parser.add<int>(from_len, '\0', "use passwords with length longer than from-len", false, 1);
     parser.add<int>(to_len, '\0', "use passwords with length shorter than to-len", false, 255);
     parser.parse_check(argc, argv);
     int from = parser.get<int>(from_len);

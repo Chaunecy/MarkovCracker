@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     const char *trained_model = "trained-model";
     parser.add<std::string>(trained_model, '\0', "the path of trained model", true, "");
     parser.parse_check(argc, argv);
+    std::cout << "hello" << std::endl;
     shared_n_gram_map_ptr markov_grammar_p = load_grammar<shared_n_gram_map_ptr>(
             parser.get<std::string>(trained_model).c_str());
     for (auto &prefix_transition: *markov_grammar_p) {
