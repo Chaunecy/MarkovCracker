@@ -2,22 +2,22 @@
 // Created by cw on 10/29/19.
 //
 
-#include "markov_guess.h"
-//#include "markov_train.h"
+#include "common.h"
 
 int main(int argc, char *argv[]) {
-/*
-    std::ifstream is("out.cereal", std::ios::binary);
-    cereal::BinaryInputArchive archive(is);
-    int age = 0;
-    std::string name;
-    MyRecord rec{};
-    rec.x = 1;
-    rec.y = 2;
-    rec.z = .0f;
-    archive(rec);
+    cmdline::parser parser;
+    const char *trained_model = "trained-model";
+    parser.add<std::string>(trained_model, '\0', "the path of trained model", true, "");
+    parser.parse_check(argc, argv);
+    shared_n_gram_map_ptr markov_grammar_p = load_grammar<shared_n_gram_map_ptr>(
+            parser.get<std::string>(trained_model).c_str());
+    for (auto &prefix_transition: *markov_grammar_p) {
+        std::string prefix = prefix_transition.first;
+        shared_transition_ptr transition_p = prefix_transition.second;
+        std::cout << prefix << std::endl;
+        std::cout << transition_p->total_freq << std::endl;
+    }
 
-    std::cout << "Age: " << age << ", Name: " << name << ", rec: " << rec.z << std::endl;*/
 }
 
 

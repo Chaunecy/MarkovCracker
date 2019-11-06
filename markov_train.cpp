@@ -2,50 +2,91 @@
 // Created by cw on 10/29/19.
 //
 
-#include "markov_train.h"
+#include "common.h"
+
+shared_n_gram_map_ptr markov_grammar_p = nullptr;
+
+void train(const char *training_set, int prefix_len,  int from_len, int to_len);
+
 
 int main(int argc, char *argv[]) {
-    markov_grammar = std::make_shared<NGramMap>();
-    shared_count_ptr cnt_p = std::make_shared<Count>(Count{1, .1});
-    shared_chr_cnt_map_ptr chr_cnt_map_p = std::make_shared<ChrCntMap>();
-    chr_cnt_map_p->insert(std::make_pair('1', cnt_p));
-    markov_grammar->insert(std::make_pair("hello", chr_cnt_map_p));
-    shared_chr_cnt_map_ptr tmp = markov_grammar->at("hello");
-    save_grammar<shared_n_gram_map_ptr>(markov_grammar, "out.cereal");
-    shared_n_gram_map_ptr n_gram_map_p = load_grammar<shared_n_gram_map_ptr>("out.cereal");
-    std::cout << "hello" << std::endl;
-    std::cout << n_gram_map_p->at("hello") << std::endl;
-    std::cout << n_gram_map_p->at("hello")->at('1')->freq << std::endl;
-    std::cout << "world" << std::endl;
-//    grammar.insert(std::pair())
-    /*{
-        std::ofstream os("out.cereal", std::ios::binary);
-        cereal::BinaryOutputArchive archive(os);
-        int age = 24;
-        std::string name = "cw";
-        MyRecord rec{
-        };
-        rec.x = 1;
-        rec.y = 2;
-        rec.z = 3.4f;
-        archive(CEREAL_NVP(age), CEREAL_NVP(name), rec);
-    }*/
+    cmdline::parser parser;
+    const char *training_set = "training-set", *n_gram = "n-gram",
+            *trained_model = "trained-model", *from_len = "from-len", *to_len = "to-len";
+    parser.add<std::string>(training_set, '\0', "the path of training set", true, "");
+    parser.add<int>(n_gram, '\0', "the order of markov process", true, 4);
+    parser.add<std::string>(trained_model, '\0', "the path to put trained model", true, "");
+    parser.add<int>(from_len, '\0', "use passwords with length longer than from-len", false, 255);
+    parser.add<int>(to_len, '\0', "use passwords with length shorter than to-len", false, 255);
+    parser.parse_check(argc, argv);
+    int from = parser.get<int>(from_len);
+    int to = parser.get<int>(to_len);
+    if (from > to) {
+        std::cerr << "from-len should be less than or equal to to-len" << std::endl;
+        std::exit(-1);
+    }
+    markov_grammar_p = std::make_shared<NGramMap>();
+    train(parser.get<std::string>(training_set).c_str(), parser.get<int>(n_gram) - 1,
+          parser.get<int>(from_len), parser.get<int>(to_len));
 
+    save_grammar(markov_grammar_p, parser.get<std::string>(trained_model).c_str());
 }
 
-template<typename T>
-void save_grammar(T t, const char *grammar_file) {
-    std::ofstream os(grammar_file, std::ios::binary);
-    cereal::BinaryOutputArchive save(os);
-    save(t);
-//    std::cout << t->at("hello")->at('1')->freq << std::endl;
+/**
+ *
+ * @param training_set
+ * @param prefix_len    n-gram - 1
+ * @param trained_model
+ * @param from_len
+ * @param to_len
+ */
+void train(const char *training_set, const int prefix_len,  int from_len, int to_len) {
+    std::ifstream fin(training_set, std::ios::in);
+    if (!fin.is_open()) {
+        std::cerr << "can not open training_set: " << training_set << std::endl;
+        return;
+    }
+    std::string line;
+    while (getline(fin, line)) {
+        const int line_len = line.size();
+        // parse password with length between from-len and to-len
+        if (line_len > to_len || line_len < from_len) {
+            continue;
+        }
+        line += END_CHR;
+        for (int i = 0, len = line.size(); i < len; i++) {
+            int start = std::max(0, i - prefix_len);
+            int __n = i - start;
+            std::string prefix = line.substr(start, __n);
+            // can not find prefix in grammar
+            if (markov_grammar_p->find(prefix) == markov_grammar_p->end()) {
+                // create an entry
+                shared_chr_cnt_map_ptr chr_cnt_map_p = std::make_shared<ChrCntMap>();
+                shared_transition_ptr transition_p = std::make_shared<Transition>(Transition{0, chr_cnt_map_p});
+                markov_grammar_p->insert(std::make_pair(prefix, transition_p));
+            }
+            // get the transition of prefix
+            shared_transition_ptr transition_p = markov_grammar_p->at(prefix);
+            char chr = line.at(i);
+            int cnt = 1;
+            if (transition_p->chr_cnt_map_p->find(chr) == transition_p->chr_cnt_map_p->end()) {
+                // create chr_cnt_map
+                shared_count_ptr count_p = std::make_shared<Count>(Count{1, 0});
+                transition_p->chr_cnt_map_p->insert(std::make_pair(chr, count_p));
+            } else {
+                transition_p->chr_cnt_map_p->at(chr)->freq += 1;
+            }
+            transition_p->total_freq += 1;
+        }
+    }
+
+    for (auto &prefix_transition: *markov_grammar_p) {
+        std::string prefix = prefix_transition.first;
+        shared_transition_ptr transition_p = prefix_transition.second;
+        for (auto &chr_cnt : *transition_p->chr_cnt_map_p) {
+            shared_count_ptr count_p = chr_cnt.second;
+            count_p->log_prob = log((double) (count_p->freq * 1.0 / transition_p->total_freq));
+        }
+    }
 }
 
-template<typename T>
-T load_grammar(const char *grammar_file) {
-    std::ifstream is(grammar_file, std::ios::binary);
-    cereal::BinaryInputArchive load(is);
-    T t;
-    load(t);
-    return t;
-}
