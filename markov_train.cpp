@@ -4,7 +4,7 @@
 
 #include "common.h"
 
-shared_n_gram_map_ptr markov_grammar_p = nullptr;
+shared_n_gram_map_ptr n_gram_p = nullptr;
 
 void train(const char *training_set, int prefix_len, int from_len, int to_len);
 
@@ -26,11 +26,13 @@ int main(int argc, char *argv[]) {
         std::cerr << "from-len should be less than or equal to to-len" << std::endl;
         std::exit(-1);
     }
-    markov_grammar_p = std::make_shared<NGramMap>();
+    n_gram_p = std::make_shared<NGramMap>();
     train(parser.get<std::string>(training_set).c_str(), parser.get<int>(n_gram) - 1,
           parser.get<int>(from_len), parser.get<int>(to_len));
     shared_label_map_ptr label_map_p = generate_label_map();
-    save_grammar(label_map_p, parser.get<std::string>(trained_model).c_str());
+    shared_markov_model_ptr markov_model_p = std::make_shared<MarkovModel>(MarkovModel{
+            parser.get<int>(n_gram), label_map_p});
+    save_grammar(markov_model_p, parser.get<std::string>(trained_model).c_str());
 }
 
 /**
@@ -59,14 +61,14 @@ void train(const char *training_set, const int prefix_len, int from_len, int to_
         for (int i = 0, len = line.size(); i < len; i++) {
             std::string prefix = get_prefix(line, i, prefix_len);
             // can not find prefix in grammar
-            if (markov_grammar_p->find(prefix) == markov_grammar_p->end()) {
+            if (n_gram_p->find(prefix) == n_gram_p->end()) {
                 // create an entry
                 shared_chr_cnt_map_ptr chr_cnt_map_p = std::make_shared<ChrCntMap>();
                 shared_transition_ptr transition_p = std::make_shared<Transition>(Transition{0, chr_cnt_map_p});
-                markov_grammar_p->insert(std::make_pair(prefix, transition_p));
+                n_gram_p->insert(std::make_pair(prefix, transition_p));
             }
             // get the transition of prefix
-            shared_transition_ptr transition_p = markov_grammar_p->at(prefix);
+            shared_transition_ptr transition_p = n_gram_p->at(prefix);
             char chr = get_chr(line, i);
             int cnt = 1;
             if (transition_p->chr_cnt_map_p->find(chr) == transition_p->chr_cnt_map_p->end()) {
@@ -80,7 +82,7 @@ void train(const char *training_set, const int prefix_len, int from_len, int to_
         }
     }
 
-    for (auto &prefix_transition: *markov_grammar_p) {
+    for (auto &prefix_transition: *n_gram_p) {
         std::string prefix = prefix_transition.first;
         shared_transition_ptr transition_p = prefix_transition.second;
         for (auto &chr_cnt : *transition_p->chr_cnt_map_p) {
@@ -100,7 +102,7 @@ int calc_label(double log_prob) {
 
 shared_label_map_ptr generate_label_map() {
     shared_label_map_ptr label_map_p = std::make_shared<LabelMap>();
-    for (const auto &iter: *markov_grammar_p) {
+    for (const auto &iter: *n_gram_p) {
         std::string prefix = iter.first;
         shared_transition_ptr transition_p = iter.second;
         for (const auto &it: *transition_p->chr_cnt_map_p) {

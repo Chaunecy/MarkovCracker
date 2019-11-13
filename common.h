@@ -43,11 +43,29 @@ struct Transition {
     }
 };
 
+
 typedef std::shared_ptr<Transition> shared_transition_ptr;
 typedef std::unordered_map<std::string, shared_transition_ptr> NGramMap;
 typedef std::shared_ptr<NGramMap> shared_n_gram_map_ptr;
 typedef std::unordered_map<int, shared_n_gram_map_ptr> LabelMap;
 typedef std::shared_ptr<LabelMap> shared_label_map_ptr;
+
+struct MarkovModel {
+    int n_gram;
+    shared_label_map_ptr label_map_p;
+
+    template<class Archive>
+    void save(Archive &ar) const {
+        ar(n_gram, label_map_p);
+    }
+
+    template<class Archive>
+    void load(Archive &ar) {
+        ar(n_gram, label_map_p);
+    }
+};
+
+typedef std::shared_ptr<MarkovModel> shared_markov_model_ptr;
 typedef std::vector<int> labels_t;
 const char END_CHR = 3;
 

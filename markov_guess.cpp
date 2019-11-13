@@ -20,9 +20,9 @@ int main(int argc, char *argv[]) {
     const char *trained_model = "trained-model";
     parser.add<std::string>(trained_model, '\0', "the path of trained model", true, "");
     parser.parse_check(argc, argv);
-    shared_label_map_ptr label_map_p = load_grammar<shared_label_map_ptr>(
+    shared_markov_model_ptr markov_model_p = load_grammar<shared_markov_model_ptr>(
             parser.get<std::string>(trained_model).c_str());
-    for (const auto &entry: *label_map_p) {
+    for (const auto &entry: *markov_model_p->label_map_p) {
         std::cout << entry.first << std::endl;
         shared_n_gram_map_ptr n_gram_map_p = entry.second;
         if (n_gram_map_p->find("") != n_gram_map_p->end() &&
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 //    std::string min_str = "default-min";
 //    char min_chr = '8';
 //    int counters[20] = {0};
-//    for (const auto &prefix_transition: *markov_grammar_p) {
+//    for (const auto &prefix_transition: *n_gram_p) {
 //        std::string prefix = prefix_transition.first;
 //        shared_transition_ptr transition_p = prefix_transition.second;
 //        for (auto &chr_cnt: *transition_p->chr_cnt_map_p) {
