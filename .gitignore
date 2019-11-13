@@ -35,5 +35,6 @@
 cmake-build-debug
 train
 guess
+test.*
 .idea
 *.cereal

@@ -6,8 +6,9 @@
 
 shared_n_gram_map_ptr markov_grammar_p = nullptr;
 
-void train(const char *training_set, int prefix_len,  int from_len, int to_len);
+void train(const char *training_set, int prefix_len, int from_len, int to_len);
 
+shared_label_map_ptr generate_label_map();
 
 int main(int argc, char *argv[]) {
     cmdline::parser parser;
@@ -28,19 +29,20 @@ int main(int argc, char *argv[]) {
     markov_grammar_p = std::make_shared<NGramMap>();
     train(parser.get<std::string>(training_set).c_str(), parser.get<int>(n_gram) - 1,
           parser.get<int>(from_len), parser.get<int>(to_len));
-
-    save_grammar(markov_grammar_p, parser.get<std::string>(trained_model).c_str());
+    shared_label_map_ptr label_map_p = generate_label_map();
+    save_grammar(label_map_p, parser.get<std::string>(trained_model).c_str());
 }
 
 /**
- *
+ * count the n-gram in training_set,
+ * password with length [from_len, to_len] will be counted; others will be discarded
  * @param training_set
  * @param prefix_len    n-gram - 1
  * @param trained_model
  * @param from_len
  * @param to_len
  */
-void train(const char *training_set, const int prefix_len,  int from_len, int to_len) {
+void train(const char *training_set, const int prefix_len, int from_len, int to_len) {
     std::ifstream fin(training_set, std::ios::in);
     if (!fin.is_open()) {
         std::cerr << "can not open training_set: " << training_set << std::endl;
@@ -55,9 +57,7 @@ void train(const char *training_set, const int prefix_len,  int from_len, int to
         }
         line += END_CHR;
         for (int i = 0, len = line.size(); i < len; i++) {
-            int start = std::max(0, i - prefix_len);
-            int __n = i - start;
-            std::string prefix = line.substr(start, __n);
+            std::string prefix = get_prefix(line, i, prefix_len);
             // can not find prefix in grammar
             if (markov_grammar_p->find(prefix) == markov_grammar_p->end()) {
                 // create an entry
@@ -67,7 +67,7 @@ void train(const char *training_set, const int prefix_len,  int from_len, int to
             }
             // get the transition of prefix
             shared_transition_ptr transition_p = markov_grammar_p->at(prefix);
-            char chr = line.at(i);
+            char chr = get_chr(line, i);
             int cnt = 1;
             if (transition_p->chr_cnt_map_p->find(chr) == transition_p->chr_cnt_map_p->end()) {
                 // create chr_cnt_map
@@ -88,5 +88,42 @@ void train(const char *training_set, const int prefix_len,  int from_len, int to
             count_p->log_prob = log((double) (count_p->freq * 1.0 / transition_p->total_freq));
         }
     }
+}
+
+int calc_label(double log_prob) {
+    int label = (int) lround(2 * (-log_prob) + .5);
+    if (1 == label) {
+        label = 2;
+    }
+    return label;
+}
+
+shared_label_map_ptr generate_label_map() {
+    shared_label_map_ptr label_map_p = std::make_shared<LabelMap>();
+    for (const auto &iter: *markov_grammar_p) {
+        std::string prefix = iter.first;
+        shared_transition_ptr transition_p = iter.second;
+        for (const auto &it: *transition_p->chr_cnt_map_p) {
+//            shared_count_ptr count_p = it.second;
+            double log_prob = it.second->log_prob;
+            int label = calc_label(log_prob);
+            if (label_map_p->find(label) == label_map_p->end()) {
+                label_map_p->insert(std::make_pair(label, std::make_shared<NGramMap>()));
+            }
+            shared_n_gram_map_ptr tmp_n_gram_map_p = label_map_p->at(label);
+            // not exist, create a new entry
+            if (tmp_n_gram_map_p->find(prefix) == tmp_n_gram_map_p->end()) {
+                shared_chr_cnt_map_ptr tmp_chr_cnt_map_p = std::make_shared<ChrCntMap>();
+                tmp_n_gram_map_p->insert(std::make_pair(prefix, std::make_shared<Transition>(Transition{
+                        0, tmp_chr_cnt_map_p
+                })));
+            }
+            shared_transition_ptr tmp_transition_p = tmp_n_gram_map_p->at(prefix);
+            if (tmp_transition_p->chr_cnt_map_p->find(it.first) == tmp_transition_p->chr_cnt_map_p->end()) {
+                tmp_transition_p->chr_cnt_map_p->insert(std::make_pair(it.first, it.second));
+            }
+        }
+    }
+    return label_map_p;
 }
 

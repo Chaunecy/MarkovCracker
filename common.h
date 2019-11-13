@@ -46,6 +46,9 @@ struct Transition {
 typedef std::shared_ptr<Transition> shared_transition_ptr;
 typedef std::unordered_map<std::string, shared_transition_ptr> NGramMap;
 typedef std::shared_ptr<NGramMap> shared_n_gram_map_ptr;
+typedef std::unordered_map<int, shared_n_gram_map_ptr> LabelMap;
+typedef std::shared_ptr<LabelMap> shared_label_map_ptr;
+typedef std::vector<int> labels_t;
 const char END_CHR = 3;
 
 template<typename T>
@@ -62,6 +65,16 @@ T load_grammar(const char *grammar_file) {
     T t;
     load(t);
     return t;
+}
+
+inline std::string get_prefix(std::string &str, int idx, int prefix_len) {
+    int start = std::max(0, idx - prefix_len);
+    int n = idx - start;
+    return str.substr(start, n);
+}
+
+inline char get_chr(std::string &str, int idx) {
+    return str.at(idx);
 }
 
 #endif //MARKOV_COMMON_H
