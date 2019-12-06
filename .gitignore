@@ -38,3 +38,6 @@ guess
 test.*
 .idea
 *.cereal
+*.pdf
+*.png
+.venv
