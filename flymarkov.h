@@ -36,9 +36,26 @@ struct Seg {
 
 class Prefix {
 private:
-    std::vector<std::string> vec;
+    std::shared_ptr<std::vector<std::string>> vec;
     std::string val;
 public:
+
+    explicit Prefix(const std::vector<std::string> &vec) {
+        this->vec = std::make_shared<std::vector<std::string>>();
+        for (const auto &ele: vec) {
+            std::cout << ele << std::endl;
+            this->vec->push_back(ele);
+        }
+    }
+
+    std::string getVal() {
+        return this->val;
+    }
+
+    std::shared_ptr<std::vector<std::string>> getVec() {
+        return this->vec;
+    }
+
     template<class Archive>
     void serialize(Archive &ar) {
         ar(vec, val);
@@ -72,4 +89,5 @@ struct Transition {
 
 typedef std::shared_ptr<Prefix> SharedPrefixPtr;
 typedef std::unordered_map<SharedPrefixPtr, SharedSegCntMapPtr> NPrefixMap;
+typedef std::shared_ptr<NPrefixMap> SharedNPrefixMapPtr;
 #endif //MARKOV_FLYMARKOV_H
