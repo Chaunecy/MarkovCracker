@@ -15,13 +15,18 @@
 #include "include/cmdline.h"
 
 struct Count {
-    int freq;
-    double log_prob;
-    int label;
+    unsigned int freq;
+    /**
+     * This is a trick.
+     * convert double to unsigned long long.
+     * We can treat it as key of unordered_map
+     * */
+    unsigned long long minus_log2_prob;
+    unsigned int label;
 
     template<class Archive>
     void serialize(Archive &ar) {
-        ar(freq, log_prob, label);
+        ar(freq, minus_log2_prob, label);
     }
 };
 
@@ -90,4 +95,6 @@ struct Transition {
 typedef std::shared_ptr<Prefix> SharedPrefixPtr;
 typedef std::unordered_map<SharedPrefixPtr, SharedSegCntMapPtr> NPrefixMap;
 typedef std::shared_ptr<NPrefixMap> SharedNPrefixMapPtr;
+typedef long Label;
+typedef std::unordered_map<Label, SharedNPrefixMapPtr> LabelMap;
 #endif //MARKOV_FLYMARKOV_H
