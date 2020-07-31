@@ -5,4 +5,5 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_executable(train markov_train.cpp common.h)
 add_executable(guess markov_guess.cpp common.h)
+add_executable(trainer flymarkov_trainer.cpp flymarkov.h)
 add_executable(test test.cpp)
